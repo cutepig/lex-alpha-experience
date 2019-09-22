@@ -1,28 +1,38 @@
-h1,
-h2,
-h3 {
-  margin-top: 0;
+:root {
+  --fg-color: #fffacd;
+  --bg-color: #008080;
 }
 
 .app-screen {
   /* TODO: Configurable color */
   width: 100%;
-  min-height: 100vh;
-  background-color: #008080;
+  background-color: var(--bg-color);
+  color: var(--fg-color);
 }
 
 .info-panel {
   display: flex;
-  height: 100vh;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+  padding: 4rem;
 }
 
 .info-panel h1,
+.info-panel h2,
 .info-panel p {
-  max-width: 30rem;
+  max-width: 32rem;
+}
+.info-panel h1 {
+  margin-top: 0;
+  font-size: 2rem;
+}
+.info-panel h2 {
+  font-size: 1.5rem;
+  font-weight: normal;
+}
+.info-panel p {
+  line-height: 1.35;
 }
 
 .media-panel {
@@ -56,6 +66,7 @@ h3 {
   background: none;
   border: none;
   font-size: 4rem;
+  color: var(--fg-color);
 }
 
 .flash-player {

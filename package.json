@@ -2,19 +2,10 @@
   "name": "lex-alpha-experience",
   "version": "0.1.0",
   "private": true,
-  "dependencies": {
-    "@types/jest": "24.0.18",
-    "@types/node": "12.7.5",
-    "@types/react": "16.9.2",
-    "@types/react-dom": "16.9.0",
-    "react": "^16.9.0",
-    "react-dom": "^16.9.0",
-    "react-scripts": "3.1.2",
-    "typescript": "3.6.3"
-  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "clean": "rm -rf build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -38,9 +29,18 @@
     ]
   },
   "devDependencies": {
-    "@types/feather-icons": "4.7.0",
+    "@types/jest": "24.0.18",
+    "@types/node": "12.7.5",
+    "@types/react": "16.9.2",
+    "@types/react-dom": "16.9.0",
     "@typescript-eslint/eslint-plugin": "2.3.0",
     "@typescript-eslint/parser": "2.3.0",
-    "prettier": "1.18.2"
+    "prettier": "1.18.2",
+    "react-scripts": "3.1.2",
+    "typescript": "3.6.3"
+  },
+  "dependencies": {
+    "react": "^16.9.0",
+    "react-dom": "^16.9.0"
   }
 }

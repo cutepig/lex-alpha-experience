@@ -88,6 +88,8 @@ const MediaPanel: React.FunctionComponent = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioContext = useMemo(() => new AudioContext(), []);
 
+  // TODO: You know, very slowly pulsating background would be
+  // nice when the user hasn't yet started the app?
   return (
     <div className={cls('media-panel', isPlaying && 'media-panel--is-playing')}>
       {isPlaying && <AudioPlayer audioContext={audioContext} />}
@@ -110,7 +112,7 @@ const MediaPanel: React.FunctionComponent = () => {
 
 const InfoPanel: React.FunctionComponent = () => (
   <div className="info-panel">
-    <h1>Welcome To Alpha Experience</h1>
+    <h1>Experience The Alpha</h1>
     <p>
       Mollit nostrud aliqua dolor dolor magna aliqua mollit. Ex mollit velit
       cillum labore laborum aliqua et esse. Ad cupidatat dolore ut laborum sit
@@ -128,7 +130,7 @@ const InfoPanel: React.FunctionComponent = () => (
       fugiat laborum tempor commodo cupidatat.
     </p>
 
-    <p>Scroll down to experience Alpha</p>
+    <h2>Experience begins here</h2>
     <p className="icofont-simple-down" />
   </div>
 );
