@@ -1,5 +1,11 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Observable, animationFrameScheduler } from 'rxjs';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useRef,
+} from 'react';
+import { Observable, animationFrameScheduler, interval } from 'rxjs';
 import { observeOn, distinctUntilChanged } from 'rxjs/operators';
 import { icons } from 'feather-icons';
 import { IStore, createStore, Reducer } from './rxjsUtils';
@@ -9,6 +15,7 @@ type Screen = 'start' | 'media';
 
 interface IState {
   screen: Screen;
+  isUiVisible: boolean;
   isPlaying: boolean;
   intensityLevel: number;
   volumeLevel: number;
@@ -88,7 +95,6 @@ export function useObservable<T>(
   defaultValue?: T,
   optionalComparisonFn?: (x: T, y: T) => boolean,
 ) {
-  console.log('useObservable', obs);
   const [state, setState] = useState(defaultValue);
   useEffect(() => {
     const subscription = obs
@@ -167,34 +173,80 @@ const AudioPlayer: React.FunctionComponent = () => {
   return null;
 };
 
+const FlashPlayer: React.FunctionComponent = () => {
+  const { store } = useContext(ServicesContext);
+  const rootEl = useRef<HTMLDivElement>();
+  const requestRef = React.useRef<number>();
+  const stateRef = useRef<IState>();
+
+  // Custom flash
+  useEffect(() => {
+    const startTime = Date.now();
+
+    const subscription = store.state$.subscribe(state => {
+      stateRef.current = state;
+    });
+
+    // eslint-disable-next-line
+    requestRef.current = requestAnimationFrame(update);
+
+    function update(currentTime) {
+      if (rootEl.current) {
+        const phase = Math.sin(
+          (currentTime - startTime) * 0.001 * Math.PI * 2 * 10,
+        );
+        const level =
+          0.5 +
+          phase *
+            0.5 *
+            (stateRef.current ? stateRef.current.intensityLevel : 0);
+        // TODO: Configurable color
+        rootEl.current.style.backgroundColor = `rgba(0, 255, 255, ${level})`;
+      }
+
+      requestRef.current = requestAnimationFrame(update);
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      cancelAnimationFrame(requestRef.current);
+    };
+  }, []);
+
+  return <div className="flash-player" ref={rootEl}></div>;
+};
+
 const MediaScreen: React.FunctionComponent = () => {
   const { store } = useContext(ServicesContext);
   const { state$, dispatch } = store;
 
   return (
-    <div className="media-screen">
-      <button onClick={() => dispatch(backToStartScreen)}>
-        <Feather name="arrow-left" />
-      </button>
-      <Observe obs={state$}>
-        {state =>
-          state.isPlaying ? (
-            // Pause button and media container
-            <>
+    <Observe obs={state$}>
+      {state => (
+        <div className="media-screen">
+          {state.isPlaying && <FlashPlayer />}
+          {state.isPlaying && <AudioPlayer />}
+
+          <div className="media-screen-ui">
+            <button onClick={() => dispatch(backToStartScreen)}>
+              <Feather name="arrow-left" />
+            </button>
+
+            {state.isPlaying ? (
+              // Pause button
               <button onClick={() => dispatch(pauseMedia)}>
                 <Feather name="pause-circle" />
               </button>
-              <AudioPlayer />
-            </>
-          ) : (
-            // Play button
-            <button onClick={() => dispatch(playMedia)}>
-              <Feather name="play-circle" />
-            </button>
-          )
-        }
-      </Observe>
-    </div>
+            ) : (
+              // Play button
+              <button onClick={() => dispatch(playMedia)}>
+                <Feather name="play-circle" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </Observe>
   );
 };
 
@@ -215,6 +267,7 @@ const AppScreen: React.FunctionComponent = () => {
 export const App: React.FC = () => {
   const store = createStore<IState>({
     screen: 'start',
+    isUiVisible: false,
     isPlaying: false,
     volumeLevel: 0.5,
     intensityLevel: 0.5,
