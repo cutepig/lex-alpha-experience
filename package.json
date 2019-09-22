@@ -7,12 +7,9 @@
     "@types/node": "12.7.5",
     "@types/react": "16.9.2",
     "@types/react-dom": "16.9.0",
-    "feather-icons": "4.24.1",
-    "immer": "4.0.0",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
     "react-scripts": "3.1.2",
-    "rxjs": "6.5.3",
     "typescript": "3.6.3"
   },
   "scripts": {

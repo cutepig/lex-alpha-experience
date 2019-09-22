@@ -1,122 +1,15 @@
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  useContext,
-  useRef,
-} from 'react';
-import { Observable, animationFrameScheduler, interval } from 'rxjs';
-import { observeOn, distinctUntilChanged } from 'rxjs/operators';
-import { icons } from 'feather-icons';
-import { IStore, createStore, Reducer } from './rxjsUtils';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './App.css';
 
-type Screen = 'start' | 'media';
-
-interface IState {
-  screen: Screen;
-  isUiVisible: boolean;
-  isPlaying: boolean;
-  intensityLevel: number;
-  volumeLevel: number;
-}
-
-type IReducer = Reducer<IState>;
-
-interface IServices {
-  store: IStore<IState>;
-  audioContext: AudioContext;
-}
-
-const ServicesContext = createContext<IServices>(null as any);
-
-interface IObserve<T> {
-  obs: Observable<T>;
-  children: (value: T) => React.ReactElement;
-}
-
-const OBSERVABLE_PENDING = Symbol('OBSERVABLE_PENDING');
-
-function Observe<T>({ obs, children }: IObserve<T>): React.ReactElement {
-  const [value, setValue] = useState<T>(OBSERVABLE_PENDING as any);
-  useEffect(() => {
-    const subscription = obs
-      .pipe(observeOn(animationFrameScheduler))
-      .subscribe(setValue);
-    return () => subscription.unsubscribe();
-  }, [obs]);
-
-  if (value === (OBSERVABLE_PENDING as any)) {
-    return null;
-  }
-
-  return children(value);
-}
-
-interface IFeather {
-  name: string; // TODO: Define
-}
-
-const Feather: React.FunctionComponent<IFeather> = ({ name }) => (
-  <span dangerouslySetInnerHTML={{ __html: icons[name].toSvg() }} />
-);
-
-const pauseMedia: IReducer = state => {
-  state.screen = 'media';
-  state.isPlaying = false;
-};
-
-const playMedia: IReducer = state => {
-  state.screen = 'media';
-  state.isPlaying = true;
-};
-
-const backToStartScreen: IReducer = state => {
-  state.isPlaying = false;
-  state.screen = 'start';
-};
-
-const StartScreen: React.FunctionComponent = () => {
-  const { store } = useContext(ServicesContext);
-  const { dispatch } = store;
-
-  return (
-    <div className="start-screen">
-      <h1 className="start-screen-title">Welcome To Alpha Experience</h1>
-      <button onClick={() => dispatch(playMedia)}>
-        <Feather name="play-circle" />
-      </button>
-    </div>
-  );
-};
-
-export function useObservable<T>(
-  obs: Observable<T>,
-  defaultValue?: T,
-  optionalComparisonFn?: (x: T, y: T) => boolean,
-) {
-  const [state, setState] = useState(defaultValue);
-  useEffect(() => {
-    const subscription = obs
-      .pipe(distinctUntilChanged(optionalComparisonFn))
-      .subscribe(setState);
-    return () => subscription.unsubscribe();
-  }, [obs]);
-  return state;
-}
+const cls = (...classes: Array<string | undefined | null | false>) =>
+  classes.filter(Boolean).join(' ');
 
 const AUDIO_FADE_TIME = 1.0;
 
-const AudioPlayer: React.FunctionComponent = () => {
-  const { store, audioContext } = useContext(ServicesContext);
-  const state = useObservable(store.state$);
-
+const AudioPlayer: React.FunctionComponent<{ audioContext: AudioContext }> = ({
+  audioContext,
+}) => {
   useEffect(() => {
-    if (!state) {
-      return;
-    }
-
-    let prevState: IState = state;
     const leftOscillatorNode = audioContext.createOscillator();
     const rightOscillatorNode = audioContext.createOscillator();
     const leftStereoPannerNode = audioContext.createStereoPanner();
@@ -139,53 +32,35 @@ const AudioPlayer: React.FunctionComponent = () => {
 
     gainNode.connect(audioContext.destination);
 
-    // Subscribe to parameter changes
-    const subscription = store.state$.subscribe(newState => {
-      if (newState.isPlaying) {
-        if (newState.volumeLevel !== prevState.volumeLevel) {
-          gainNode.gain.value = newState.volumeLevel;
-        }
-      }
-
-      prevState = newState;
-    });
-
     leftOscillatorNode.start();
     rightOscillatorNode.start();
 
     // Apparently FF doesn't implement this correctly, instead
     // of fading it just toggles to given value with delay :(
     gainNode.gain.linearRampToValueAtTime(
-      state.volumeLevel,
+      0.5,
       audioContext.currentTime + AUDIO_FADE_TIME,
     );
 
     return () => {
       const when = audioContext.currentTime + AUDIO_FADE_TIME;
-      subscription.unsubscribe();
       gainNode.gain.linearRampToValueAtTime(0, when);
       leftOscillatorNode.stop(when);
       rightOscillatorNode.stop(when);
       setTimeout(() => gainNode.disconnect(), AUDIO_FADE_TIME * 1000);
     };
-  }, [!state]);
+  }, []);
 
   return null;
 };
 
 const FlashPlayer: React.FunctionComponent = () => {
-  const { store } = useContext(ServicesContext);
   const rootEl = useRef<HTMLDivElement>();
   const requestRef = React.useRef<number>();
-  const stateRef = useRef<IState>();
 
   // Custom flash
   useEffect(() => {
     const startTime = Date.now();
-
-    const subscription = store.state$.subscribe(state => {
-      stateRef.current = state;
-    });
 
     // eslint-disable-next-line
     requestRef.current = requestAnimationFrame(update);
@@ -195,11 +70,7 @@ const FlashPlayer: React.FunctionComponent = () => {
         const phase = Math.sin(
           (currentTime - startTime) * 0.001 * Math.PI * 2 * 10,
         );
-        const level =
-          0.5 +
-          phase *
-            0.5 *
-            (stateRef.current ? stateRef.current.intensityLevel : 0);
+        const level = 0.5 + phase * 0.5;
         // TODO: Configurable color
         rootEl.current.style.backgroundColor = `rgba(0, 255, 255, ${level})`;
       }
@@ -207,80 +78,64 @@ const FlashPlayer: React.FunctionComponent = () => {
       requestRef.current = requestAnimationFrame(update);
     }
 
-    return () => {
-      subscription.unsubscribe();
-      cancelAnimationFrame(requestRef.current);
-    };
+    return () => cancelAnimationFrame(requestRef.current);
   }, []);
 
   return <div className="flash-player" ref={rootEl}></div>;
 };
 
-const MediaScreen: React.FunctionComponent = () => {
-  const { store } = useContext(ServicesContext);
-  const { state$, dispatch } = store;
+const MediaPanel: React.FunctionComponent = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContext = useMemo(() => new AudioContext(), []);
 
   return (
-    <Observe obs={state$}>
-      {state => (
-        <div className="media-screen">
-          {state.isPlaying && <FlashPlayer />}
-          {state.isPlaying && <AudioPlayer />}
+    <div className={cls('media-panel', isPlaying && 'media-panel--is-playing')}>
+      {isPlaying && <AudioPlayer audioContext={audioContext} />}
 
-          <div className="media-screen-ui">
-            <button onClick={() => dispatch(backToStartScreen)}>
-              <Feather name="arrow-left" />
-            </button>
+      <div className="media-panel-flash">{isPlaying && <FlashPlayer />}</div>
 
-            {state.isPlaying ? (
-              // Pause button
-              <button onClick={() => dispatch(pauseMedia)}>
-                <Feather name="pause-circle" />
-              </button>
-            ) : (
-              // Play button
-              <button onClick={() => dispatch(playMedia)}>
-                <Feather name="play-circle" />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </Observe>
-  );
-};
-
-const AppScreen: React.FunctionComponent = () => {
-  const { store } = useContext(ServicesContext);
-
-  return (
-    <div className="app-screen">
-      <Observe obs={store.state$}>
-        {({ screen }) =>
-          screen === 'start' ? <StartScreen /> : <MediaScreen />
-        }
-      </Observe>
+      <div className="media-panel-button">
+        <button
+          onClick={ev => {
+            ev.currentTarget.focus();
+            setIsPlaying(!isPlaying);
+          }}
+        >
+          <i className={isPlaying ? 'icofont-pause' : 'icofont-play-alt-2'} />
+        </button>
+      </div>
     </div>
   );
 };
 
-export const App: React.FC = () => {
-  const store = createStore<IState>({
-    screen: 'start',
-    isUiVisible: false,
-    isPlaying: false,
-    volumeLevel: 0.5,
-    intensityLevel: 0.5,
-  });
+const InfoPanel: React.FunctionComponent = () => (
+  <div className="info-panel">
+    <h1>Welcome To Alpha Experience</h1>
+    <p>
+      Mollit nostrud aliqua dolor dolor magna aliqua mollit. Ex mollit velit
+      cillum labore laborum aliqua et esse. Ad cupidatat dolore ut laborum sit
+      aute enim aliquip eu. Cillum cupidatat et nisi non duis. Consectetur
+      adipisicing ullamco aliqua nulla ea commodo ad minim laborum ea cupidatat
+      reprehenderit magna sunt. Est laboris consequat eu ad voluptate aliqua
+      voluptate ea consectetur fugiat.
+    </p>
 
-  const services: IServices = {
-    store,
-    audioContext: new AudioContext(),
-  };
+    <p>
+      Esse irure pariatur deserunt magna ad anim aliqua dolor nisi ipsum do. Ex
+      incididunt officia consequat labore consectetur proident Lorem ad eiusmod
+      in qui. Incididunt excepteur fugiat laboris aliquip laborum ex consequat
+      consectetur fugiat est minim proident. Officia fugiat laborum eu irure
+      fugiat laborum tempor commodo cupidatat.
+    </p>
 
-  return (
-    <ServicesContext.Provider value={services}>
-      <AppScreen />
-    </ServicesContext.Provider>
-  );
-};
+    <p>Scroll down to experience Alpha</p>
+    <p className="icofont-simple-down" />
+  </div>
+);
+
+export const App: React.FC = () => (
+  <div className="app-screen">
+    <InfoPanel />
+    <MediaPanel />
+  </div>
+);

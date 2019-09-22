@@ -1,19 +1,65 @@
-.media-screen {
+h1,
+h2,
+h3 {
+  margin-top: 0;
+}
+
+.app-screen {
+  /* TODO: Configurable color */
+  width: 100%;
+  min-height: 100vh;
+  background-color: #008080;
+}
+
+.info-panel {
+  display: flex;
+  height: 100vh;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.info-panel h1,
+.info-panel p {
+  max-width: 30rem;
+}
+
+.media-panel {
   position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100vh;
+  background: none;
+}
+.media-panel--is-playing {
   background-color: #000;
 }
 
-.media-screen-ui {
+.media-panel-flash {
+  position: absolute;
+  width: 100%;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.media-panel-button {
   position: relative;
   z-index: 2;
 }
 
+.media-panel-button button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 4rem;
+}
+
 .flash-player {
-  position: absolute;
-  z-index: 1;
-  pointer-events: none;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0);
 }
