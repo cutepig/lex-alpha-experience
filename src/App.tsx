@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import NoSleep from 'nosleep.js';
 import './App.css';
 
 const cls = (...classes: Array<string | undefined | null | false>) =>
@@ -9,6 +10,9 @@ const AUDIO_FADE_TIME = 1.0;
 const AudioPlayer: React.FunctionComponent<{ audioContext: AudioContext }> = ({
   audioContext,
 }) => {
+  const nosleep = useMemo(() => new NoSleep(), []);
+
+  // Binaural beat
   useEffect(() => {
     const leftOscillatorNode = audioContext.createOscillator();
     const rightOscillatorNode = audioContext.createOscillator();
@@ -51,6 +55,12 @@ const AudioPlayer: React.FunctionComponent<{ audioContext: AudioContext }> = ({
     };
   }, []);
 
+  // Sleep prevention
+  useEffect(() => {
+    nosleep.enable();
+    return () => nosleep.disable();
+  }, []);
+
   return null;
 };
 
@@ -58,7 +68,7 @@ const FlashPlayer: React.FunctionComponent = () => {
   const rootEl = useRef<HTMLDivElement>();
   const requestRef = React.useRef<number>();
 
-  // Custom flash
+  // Visual pulse
   useEffect(() => {
     const startTime = Date.now();
 
@@ -85,13 +95,30 @@ const FlashPlayer: React.FunctionComponent = () => {
 };
 
 const MediaPanel: React.FunctionComponent = () => {
+  const rootEl = useRef<HTMLDivElement>();
   const [isPlaying, setIsPlaying] = useState(false);
   const audioContext = useMemo(() => new AudioContext(), []);
+
+  // Fullscreen behaviour
+  useEffect(() => {
+    if (document.fullscreenEnabled && rootEl.current.requestFullscreen) {
+      if (isPlaying && rootEl.current) {
+        rootEl.current.requestFullscreen({ navigationUI: 'hide' });
+
+        return () => document.fullscreenElement && document.exitFullscreen();
+      } else if (!isPlaying && document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+    }
+  }, [rootEl, isPlaying]);
 
   // TODO: You know, very slowly pulsating background would be
   // nice when the user hasn't yet started the app?
   return (
-    <div className={cls('media-panel', isPlaying && 'media-panel--is-playing')}>
+    <div
+      ref={rootEl}
+      className={cls('media-panel', isPlaying && 'media-panel--is-playing')}
+    >
       {isPlaying && <AudioPlayer audioContext={audioContext} />}
 
       <div className="media-panel-flash">{isPlaying && <FlashPlayer />}</div>
